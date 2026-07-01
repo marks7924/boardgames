@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Game Collection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --darker: #020617;
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 50%, #1e1b4b 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        .bg-animation {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .floating-card {
+            position: absolute;
+            width: 60px; height: 84px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            opacity: 0.1;
+            animation: float 20s infinite ease-in-out;
+        }
+        .floating-card:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 25s; }
+        .floating-card:nth-child(2) { left: 30%; animation-delay: 5s; animation-duration: 30s; }
+        .floating-card:nth-child(3) { left: 50%; animation-delay: 10s; animation-duration: 22s; }
+        .floating-card:nth-child(4) { left: 70%; animation-delay: 15s; animation-duration: 28s; }
+        .floating-card:nth-child(5) { left: 90%; animation-delay: 7s; animation-duration: 24s; }
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.1; }
+            90% { opacity: 0.1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        .header {
+            position: relative;
+            z-index: 10;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, transparent 100%);
+        }
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.5)); }
+            to { filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.5)); }
+        }
+        .game-count { color: #94a3b8; font-size: 0.9rem; margin-bottom: 15px; }
+        .sync-status {
+            color: #10b981;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            display: none;
+        }
+        .sync-status.active { display: block; }
+        
+        /* Search Bar */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 20px;
+            padding: 0 20px;
+            position: relative;
+            z-index: 10;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border-radius: 50px;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        .search-input::placeholder { color: #64748b; }
+        
+        /* Announcement Banner */
+        .announcement {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: #fff;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: 600;
+            position: relative;
+            z-index: 10;
+            animation: slideDown 0.5s ease;
+            display: none;
+            cursor: pointer;
+        }
+        .announcement.active { display: block; }
+        .announcement:hover { opacity: 0.9; }
+        
+        /* User Login Bar */
+        .user-bar {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 0 20px 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            animation: slideDown 0.5s ease;
+        }
+        .user-bar.active { display: flex; }
+        .user-bar input {
+            padding: 10px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .user-bar button {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .user-info {
+            display: none;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 0 20px 20px;
+            border-radius: 15px;
+            border: 1px solid var(--success);
+        }
+        .user-info.active { display: flex; }
+        .cart-btn {
+            position: relative;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .cart-btn:hover { transform: scale(1.05); }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--danger);
+            color: #fff;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Cart Modal */
+        .cart-modal .modal {
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .cart-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        #userLoginBtn {
+    font-size: 1rem;
+    padding: 10px 25px;
+}
+        .cart-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .cart-item-info { flex: 1; }
+        .cart-item-name { font-weight: 600; margin-bottom: 5px; }
+        .cart-item-status {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        .cart-item-status.available { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .cart-item-status.missing { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .remove-from-cart {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .submit-cart-btn {
+            background: var(--success);
+            color: #fff;
+            margin-top: 20px;
+        }
+        
+        /* Admin Orders Panel */
+        .orders-panel {
+            display: none;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 0 20px 20px;
+            border-radius: 15px;
+            border: 1px solid var(--accent);
+            animation: slideDown 0.5s ease;
+        }
+        .orders-panel.active { display: block; }
+        .orders-panel h3 { color: var(--accent); margin-bottom: 15px; }
+        .order-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .order-user { font-weight: 600; color: var(--accent); }
+        .order-time { color: #94a3b8; font-size: 0.8rem; }
+        .order-games { display: flex; gap: 10px; flex-wrap: wrap; }
+        .order-game {
+            background: rgba(99, 102, 241, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+        .new-order-badge {
+            background: var(--danger);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Notifications */
+        .admin-notifications {
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--danger);
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            cursor: pointer;
+            animation: slideInRight 0.5s ease;
+        }
+        .admin-notifications.active { display: block; }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .admin-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        .admin-toggle:hover { background: rgba(99, 102, 241, 0.2); color: #fff; border-color: var(--primary); }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal {
+            background: linear-gradient(135deg, var(--dark), var(--darker));
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%; max-width: 400px;
+            transform: scale(0.8);
+            transition: transform 0.3s;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .modal-overlay.active .modal { transform: scale(1); }
+        .modal h2 { margin-bottom: 20px; text-align: center; color: var(--accent); }
+        .password-input {
+            width: 100%; padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+        .password-input:focus { outline: none; border-color: var(--primary); }
+        .btn {
+            width: 100%; padding: 15px;
+            border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: #94a3b8; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .admin-panel {
+            display: none;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            margin: 0 20px 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            animation: slideDown 0.5s ease;
+        }
+        .admin-panel.active { display: block; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .admin-panel h3 { color: var(--accent); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .admin-form { display: flex; flex-direction: column; gap: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.9rem; color: #94a3b8; }
+        .form-group input, .form-group textarea, .form-group select {
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group select option { background: var(--dark); }
+        .image-preview {
+            width: 100%; height: 150px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            color: #64748b;
+            overflow: hidden;
+            position: relative;
+        }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .image-preview.has-image { border-style: solid; border-color: var(--primary); }
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-input-wrapper input[type=file] { position: absolute; left: -9999px; }
+        .file-input-label {
+            display: block; padding: 12px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px dashed var(--primary);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--primary);
+        }
+        .file-input-label:hover { background: rgba(99, 102, 241, 0.3); }
+        .games-container {
+            position: relative;
+            z-index: 10;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+        .game-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.3);
+        }
+        .game-card.missing {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+        .game-card.missing:hover {
+            transform: translateY(-5px) scale(1.01);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .game-card::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.7s;
+        }
+        .game-card:hover::before { left: 100%; }
+        .game-image { width: 100%; height: 200px; overflow: hidden; background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+        .game-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .game-card:hover .game-image img { transform: scale(1.1); }
+        .game-content { padding: 20px; }
+        .game-title { font-size: 1.3rem; margin-bottom: 10px; color: #fff; font-weight: 700; }
+        .game-description { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        /* Badges */
+        .game-badges {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .game-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-new {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: #fff;
+            animation: pulse 2s infinite;
+        }
+        .badge-missing {
+            background: rgba(107, 114, 128, 0.3);
+            color: #9ca3af;
+        }
+        .badge-available {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .admin-badges { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge-delete { background: rgba(239, 68, 68, 0.2); color: #ef4444; cursor: pointer; }
+        .badge-delete:hover { background: rgba(239, 68, 68, 0.4); }
+        .badge-edit { background: rgba(245, 158, 11, 0.2); color: #f59e0b; cursor: pointer; }
+        .badge-edit:hover { background: rgba(245, 158, 11, 0.4); }
+        .badge-move {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--primary);
+            cursor: grab;
+        }
+        .badge-move:active { cursor: grabbing; }
+        
+        .add-to-cart-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--success);
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 5;
+        }
+        .add-to-cart-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+        .add-to-cart-btn.added {
+            background: var(--danger);
+        }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #64748b; grid-column: 1 / -1; }
+        .empty-state-icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.5; }
+        .toast {
+            position: fixed; bottom: 30px; left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(15, 23, 42, 0.95);
+            color: #fff; padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 2000; opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { border-color: #10b981; }
+        .toast.error { border-color: #ef4444; }
+        .detail-modal .modal { max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .detail-image { width: 100%; height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px; }
+        .detail-title { font-size: 1.5rem; margin-bottom: 15px; color: var(--accent); }
+        .detail-description { color: #cbd5e1; line-height: 1.6; font-size: 1rem; }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            .games-container { grid-template-columns: 1fr; padding: 10px; }
+            .game-card { margin: 0 10px; }
+            .user-bar, .user-info { flex-direction: column; }
+        }
+        .loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 50%, #1e1b4b 100%);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+}
+        .loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .badge-pinned {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    animation: pulse 2s infinite;
+}
+        .loading-content {
+            text-align: center;
+            animation: fadeInUp 0.5s ease;
+        }
+        .loading-logo {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+        .loading-spinner-big {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(99, 102, 241, 0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+        .loading-text {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .loading-subtext {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
+        .game-card.dragging {
+    opacity: 0.5;
+    transform: scale(1.05);
+    box-shadow: 0 20px 40px rgba(99, 102, 241, 0.5);
+    z-index: 100;
+}
+.game-card.drag-over {
+    border-top: 3px solid var(--accent);
+}
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">🎴</div>
+            <div class="loading-spinner-big"></div>
+            <h2 class="loading-text">Loading Card Games...</h2>
+            <p class="loading-subtext">Connecting to cloud database</p>
+        </div>
+    </div>
+
+    <!-- Admin Notification -->
+    <div id="adminNotification" class="admin-notifications" onclick="showOrdersPanel()">
+        🛒 <span id="newOrdersCount">0</span> New Orders!
+    </div>
+
+    <!-- Announcement Banner -->
+    <div id="announcement" class="announcement" onclick="hideAnnouncement()">
+        🎉 <span id="announcementText">New games added!</span> Click to dismiss
+    </div>
+
+    <div class="bg-animation">
+        <div class="floating-card"></div>
+        <div class="floating-card"></div>
+        <div class="floating-card"></div>
+        <div class="floating-card"></div>
+        <div class="floating-card"></div>
+    </div>
+
+    <header class="header">
+        <h1>🎴 Board Game Collection</h1>
+        <div class="sync-status" id="syncStatus">☁️ Synced to cloud</div>
+        <div class="game-count" id="gameCount">Loading games...</div>
+        <button class="admin-toggle" id="adminBtn">🔐 Admin Access</button>
+    </header>
+
+    <!-- Search Bar -->
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search games...">
+    </div>
+
+    <!-- User Login Button (shown when not logged in) -->
+<div style="text-align:center; margin-bottom:15px;">
+    <button class="admin-toggle" id="userLoginBtn" onclick="showUserLoginModal()">👤 Sign In</button>
+</div>
+
+<!-- User Info (shown when logged in) -->
+<div class="user-info" id="userInfo">
+    <span>👋 Welcome, <strong id="currentUserName">Guest</strong>!</span>
+    <button class="cart-btn" id="cartBtn" onclick="showCart()">
+        🛒 Cart <span class="cart-badge" id="cartBadge" style="display:none">0</span>
+    </button>
+    <button class="admin-toggle" onclick="logoutUser()">Logout</button>
+</div>
+    <!-- Admin Panels -->
+    <div class="admin-panel" id="adminPanel">
+        <h3>⚡ Add / Edit Game</h3>
+        <form class="admin-form" id="gameForm">
+            <div class="form-group">
+                <label>Game Name</label>
+                <input type="text" id="gameName" required placeholder="Enter game name...">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="gameDescription" required placeholder="Describe the game..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="gameStatus">
+                    <option value="available">✅ Available</option>
+                    <option value="missing">❌ Missing</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Game Image</label>
+                <div class="image-preview" id="imagePreview"><span>No image selected</span></div>
+                <div class="file-input-wrapper">
+                    <input type="file" id="gameImage" accept="image/*">
+                    <label for="gameImage" class="file-input-label">📷 Choose Image</label>
+                </div>
+                <div class="form-group">
+    <label>Display Order (1 = first)</label>
+    <input type="number" id="gameOrder" min="1" value="1" required>
+</div>
+<div class="form-group">
+    <label>
+        <input type="checkbox" id="gamePinned" style="width:auto;margin-right:8px;">
+        Pin this game (show at top in red)
+    </label>
+</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Game</button>
+            <button type="button" class="btn btn-secondary" id="logoutBtn">Logout</button>
+        </form>
+    </div>
+
+    <div class="orders-panel" id="ordersPanel">
+        <h3>🛒 Customer Orders</h3>
+        <div id="ordersList"></div>
+        <button class="btn btn-secondary" onclick="hideOrdersPanel()" style="margin-top:15px">Close</button>
+    </div>
+
+    <div class="games-container" id="gamesContainer">
+        <div class="empty-state">
+            <div class="empty-state-icon">🎮</div>
+            <h3>No games yet</h3>
+            <p>Login as admin to add your Board games!</p>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal">
+            <h2>🔐 Admin Login</h2>
+            <input type="password" class="password-input" id="passwordInput" placeholder="Enter password...">
+            <button class="btn btn-primary" id="loginBtn">Enter</button>
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        </div>
+    </div>
+<!-- User Login Modal -->
+<div class="modal-overlay" id="userLoginModal">
+    <div class="modal">
+        <h2>👤 Welcome!</h2>
+        <p style="color:#94a3b8; margin-bottom:15px; text-align:center;">Enter your name to start shopping</p>
+        <input type="text" class="password-input" id="userNameInput" placeholder="Your name..." onkeypress="if(event.key==='Enter')loginUser()">
+        <button class="btn btn-primary" onclick="loginUser()">Start Shopping</button>
+        <button class="btn btn-secondary" onclick="hideUserLoginModal()">Cancel</button>
+    </div>
+</div>
+    <!-- Cart Modal -->
+    <div class="modal-overlay cart-modal" id="cartModal">
+        <div class="modal">
+            <h2>🛒 Your Cart</h2>
+            <div id="cartItems"></div>
+            <div id="cartEmpty" style="text-align:center;color:#94a3b8;padding:20px;display:none">
+                Your cart is empty
+            </div>
+            <button class="btn btn-success submit-cart-btn" id="submitCartBtn" onclick="submitCart()">Submit Order</button>
+            <button class="btn btn-secondary" onclick="hideCart()">Close</button>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay detail-modal" id="detailModal">
+        <div class="modal">
+            <img class="detail-image" id="detailImage" src="" alt="">
+            <h2 class="detail-title" id="detailTitle"></h2>
+            <p class="detail-description" id="detailDescription"></p>
+            <button class="btn btn-secondary" id="closeDetailBtn" style="margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBVl6xoDx9agaloGV1x15UKsbVK5-hjr5Q",
+            authDomain: "card-games-de9bd.firebaseapp.com",
+            databaseURL: "https://card-games-de9bd-default-rtdb.firebaseio.com",
+            projectId: "card-games-de9bd",
+            storageBucket: "card-games-de9bd.firebasestorage.app",
+            messagingSenderId: "345640811704",
+            appId: "1:345640811704:web:86142c2e38eb34cf69c84d"
+        };
+
+        const ADMIN_PASSWORD = 'mark79';
+        let isAdmin = false;
+        let games = [];
+        let currentImage = null;
+        let editingId = null;
+        let db = null;
+        let currentUser = null;
+        let cart = [];
+        let orders = [];
+        let lastSeenOrderTime = localStorage.getItem('lastSeenOrderTime') || 0;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            initFirebase();
+            checkUserLogin();
+        });
+
+     function initFirebase() {
+    const timeoutId = setTimeout(() => {
+        hideLoading();
+    }, 15000); // Increased to 15 seconds
+
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        
+        db.ref('games').on('value', (snapshot) => {
+            clearTimeout(timeoutId);
+            const data = snapshot.val();
+            if (data) {
+                games = Object.values(data);
+            } else {
+                games = [];
+            }
+            renderGames();
+            updateGameCount();
+            checkNewGames();
+            // REMOVED: hideLoading() — now handled by image loading
+            document.getElementById('syncStatus').classList.add('active');
+        });
+
+        db.ref('orders').on('value', (snapshot) => {
+            const data = snapshot.val();
+            orders = data ? Object.values(data) : [];
+            if (isAdmin) checkNewOrders();
+        });
+        
+    } catch (e) {
+        console.error('Firebase error:', e);
+        clearTimeout(timeoutId);
+        hideLoading();
+        showToast('Cloud sync failed', 'error');
+    }
+}
+
+        function hideLoading() {
+            const loading = document.getElementById('loadingScreen');
+            if (loading) loading.classList.add('hidden');
+        }
+
+        function setupEventListeners() {
+            document.getElementById('userLoginBtn').addEventListener('click', showUserLoginModal);
+            document.getElementById('adminBtn').addEventListener('click', showPasswordModal);
+            document.getElementById('loginBtn').addEventListener('click', checkPassword);
+            document.getElementById('cancelBtn').addEventListener('click', hidePasswordModal);
+            document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+                if(e.key === 'Enter') checkPassword();
+            });
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('gameForm').addEventListener('submit', handleSubmit);
+            document.getElementById('gameImage').addEventListener('change', handleImageSelect);
+            document.getElementById('closeDetailBtn').addEventListener('click', hideDetailModal);
+            document.getElementById('detailModal').addEventListener('click', function(e) {
+                if(e.target === this) hideDetailModal();
+            });
+            document.getElementById('searchInput').addEventListener('input', handleSearch);
+            document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hidePasswordModal();
+        hideDetailModal();
+        hideCart();
+        hideUserLoginModal(); // Add this
+    }
+});
+        }
+
+        // ========== SEARCH ==========
+        function handleSearch(e) {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                renderGames();
+                return;
+            }
+            
+            const filtered = games.filter(game => 
+                game.name.toLowerCase().includes(query) || 
+                game.description.toLowerCase().includes(query)
+            );
+            
+            renderGames(filtered);
+        }
+
+        // ========== USER LOGIN ==========
+      function showUserLoginModal() {
+    document.getElementById('userLoginModal').classList.add('active');
+    document.getElementById('userNameInput').value = '';
+    setTimeout(() => document.getElementById('userNameInput').focus(), 100);
+}
+
+function hideUserLoginModal() {
+    document.getElementById('userLoginModal').classList.remove('active');
+}
+
+function showUserInfo() {
+    document.getElementById('userLoginBtn').style.display = 'none';
+    document.getElementById('userInfo').classList.add('active');
+    document.getElementById('currentUserName').textContent = currentUser;
+    loadCart();
+}
+
+        function loginUser() {
+    const name = document.getElementById('userNameInput').value.trim();
+    if (!name) {
+        showToast('Please enter your name', 'error');
+        return;
+    }
+    currentUser = name;
+    localStorage.setItem('currentUser', name);
+    hideUserLoginModal();
+    showUserInfo();
+    showToast('Welcome, ' + name + '!', 'success');
+}
+
+        function showUserBar() {
+            document.getElementById('userBar').classList.remove('active');
+            document.getElementById('userInfo').classList.add('active');
+            document.getElementById('currentUserName').textContent = currentUser;
+            loadCart();
+        }
+function logoutUser() {
+    currentUser = null;
+    cart = [];
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('cart');
+    document.getElementById('userInfo').classList.remove('active');
+    document.getElementById('userLoginBtn').style.display = 'inline-block';
+    document.getElementById('cartBadge').style.display = 'none';
+    renderGames();
+}
+
+        // ========== CART ==========
+        function loadCart() {
+            const saved = localStorage.getItem('cart');
+            if (saved) cart = JSON.parse(saved);
+            updateCartBadge();
+        }
+
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge();
+        }
+
+        function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            if (cart.length > 0) {
+                badge.textContent = cart.length;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function addToCart(index, e) {
+            e.stopPropagation();
+            if (!currentUser) {
+                showToast('Please enter your name first!', 'error');
+                document.getElementById('userNameInput').focus();
+                return;
+            }
+            
+            const game = games[index];
+            if (game.status === 'missing') {
+                showToast('This game is currently missing!', 'error');
+                return;
+            }
+            
+            if (cart.find(item => item.name === game.name)) {
+                showToast('Already in cart!', 'error');
+                return;
+            }
+            
+            cart.push({ name: game.name, image: game.image, status: game.status || 'available' });
+            saveCart();
+            showToast('Added to cart!', 'success');
+            renderGames(); // Update button state
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            saveCart();
+            showCart();
+            renderGames();
+        }
+
+        function showCart() {
+            const container = document.getElementById('cartItems');
+            const emptyMsg = document.getElementById('cartEmpty');
+            const submitBtn = document.getElementById('submitCartBtn');
+            
+            if (cart.length === 0) {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+                submitBtn.style.display = 'none';
+            } else {
+                emptyMsg.style.display = 'none';
+                submitBtn.style.display = 'block';
+                container.innerHTML = cart.map((item, i) => `
+                    <div class="cart-item">
+                        <img src="${item.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎴</text></svg>'}" alt="">
+                        <div class="cart-item-info">
+                            <div class="cart-item-name">${escapeHtml(item.name)}</div>
+                            <span class="cart-item-status ${item.status}">${item.status}</span>
+                        </div>
+                        <button class="remove-from-cart" onclick="removeFromCart(${i})">Remove</button>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('cartModal').classList.add('active');
+        }
+
+        function hideCart() {
+            document.getElementById('cartModal').classList.remove('active');
+        }
+
+        function submitCart() {
+            if (cart.length === 0) return;
+            
+            const order = {
+                user: currentUser,
+                games: cart.map(item => item.name),
+                timestamp: Date.now(),
+                status: 'new'
+            };
+            
+            const orderRef = db.ref('orders').push();
+            orderRef.set(order);
+            
+            cart = [];
+            saveCart();
+            hideCart();
+            showToast('Order submitted! Admin will review it.', 'success');
+        }
+
+        // ========== ORDERS (ADMIN) ==========
+        function checkNewOrders() {
+            const newOrders = orders.filter(o => o.timestamp > lastSeenOrderTime && o.status === 'new');
+            const notif = document.getElementById('adminNotification');
+            const countSpan = document.getElementById('newOrdersCount');
+            
+            if (newOrders.length > 0) {
+                countSpan.textContent = newOrders.length;
+                notif.classList.add('active');
+            } else {
+                notif.classList.remove('active');
+            }
+        }
+
+        function showOrdersPanel() {
+            document.getElementById('ordersPanel').classList.add('active');
+            renderOrders();
+            
+            // Mark as seen
+            if (orders.length > 0) {
+                lastSeenOrderTime = Date.now();
+                localStorage.setItem('lastSeenOrderTime', lastSeenOrderTime);
+                document.getElementById('adminNotification').classList.remove('active');
+            }
+        }
+
+        function hideOrdersPanel() {
+            document.getElementById('ordersPanel').classList.remove('active');
+        }
+
+        function renderOrders() {
+            const container = document.getElementById('ordersList');
+            if (orders.length === 0) {
+                container.innerHTML = '<p style="color:#94a3b8;text-align:center">No orders yet</p>';
+                return;
+            }
+            
+            container.innerHTML = orders.slice().reverse().map(order => `
+                <div class="order-card">
+                    <div class="order-header">
+                        <span class="order-user">👤 ${escapeHtml(order.user)}</span>
+                        <div>
+                            ${order.status === 'new' ? '<span class="new-order-badge">NEW</span>' : ''}
+                            <span class="order-time">${new Date(order.timestamp).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="order-games">
+                        ${order.games.map(g => `<span class="order-game">${escapeHtml(g)}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========== ANNOUNCEMENT ==========
+        function checkNewGames() {
+            const lastVisit = parseInt(localStorage.getItem('lastVisit') || '0');
+            const newGames = games.filter(g => g.addedAt && g.addedAt > lastVisit);
+            
+            if (newGames.length > 0) {
+                const ann = document.getElementById('announcement');
+                document.getElementById('announcementText').textContent = 
+                    `${newGames.length} game${newGames.length > 1 ? 's' : ''} added recently! Check them out`;
+                ann.classList.add('active');
+            }
+        }
+
+        function hideAnnouncement() {
+            document.getElementById('announcement').classList.remove('active');
+            localStorage.setItem('lastVisit', Date.now().toString());
+        }
+
+        // ========== ADMIN ==========
+        function showPasswordModal() {
+            if (isAdmin) {
+                logout();
+                return;
+            }
+            document.getElementById('passwordModal').classList.add('active');
+            document.getElementById('passwordInput').value = '';
+            setTimeout(() => document.getElementById('passwordInput').focus(), 100);
+        }
+
+        function hidePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+        }
+
+        function checkPassword() {
+            const input = document.getElementById('passwordInput').value;
+            if (input === ADMIN_PASSWORD) {
+                isAdmin = true;
+                hidePasswordModal();
+                document.getElementById('adminPanel').classList.add('active');
+                document.getElementById('adminBtn').textContent = '🔓 Logout';
+                showToast('Welcome, Admin!', 'success');
+                checkNewOrders();
+                renderGames();
+            } else {
+                showToast('Wrong password!', 'error');
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
+            }
+        }
+
+        function logout() {
+            isAdmin = false;
+            document.getElementById('adminPanel').classList.remove('active');
+            document.getElementById('ordersPanel').classList.remove('active');
+            document.getElementById('adminBtn').textContent = '🔐 Admin Access';
+            document.getElementById('adminNotification').classList.remove('active');
+            resetForm();
+            renderGames();
+            showToast('Logged out', 'success');
+        }
+
+        // ========== GAMES CRUD ==========
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const maxWidth = 800;
+                        const scale = Math.min(maxWidth / img.width, 1);
+                        canvas.width = img.width * scale;
+                        canvas.height = img.height * scale;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        currentImage = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        const preview = document.getElementById('imagePreview');
+                        preview.innerHTML = '<img src="' + currentImage + '" alt="Preview">';
+                        preview.classList.add('has-image');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('gameName').value.trim();
+            const description = document.getElementById('gameDescription').value.trim();
+            const status = document.getElementById('gameStatus').value;
+            const order = parseInt(document.getElementById('gameOrder').value) || 1;
+            const pinned = document.getElementById('gamePinned').checked;
+            
+            if (!name || !description) {
+                showToast('Please fill in all fields', 'error');
+                return;
+            }
+
+         if (editingId !== null) {
+    games[editingId] = {
+        name: name,
+        description: description,
+        status: status,
+        image: currentImage || games[editingId].image,
+        addedAt: games[editingId].addedAt || Date.now(),  // Keep original added time
+        editedAt: Date.now(),  // NEW: Mark as edited
+        order: order,
+        pinned: pinned
+    };
+                showToast('Game updated!', 'success');
+                editingId = null;
+            } else {
+              // When ADDING new game:
+games.push({
+    name: name,
+    description: description,
+    status: status,
+    image: currentImage,
+    addedAt: Date.now(),
+    order: games.length + 1,  // Auto-assign next number
+    pinned: false
+});
+                showToast('Game added!', 'success');
+            }
+
+            saveGames();
+            renderGames();
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('gameOrder').value = games.length + 1;
+            document.getElementById('gamePinned').checked = false;
+            document.getElementById('gameForm').reset();
+            currentImage = null;
+            editingId = null;
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '<span>No image selected</span>';
+            preview.classList.remove('has-image');
+            document.querySelector('.admin-panel h3').textContent = '⚡ Add / Edit Game';
+        }
+
+        function saveGames() {
+            if (!db) return;
+            const gamesObj = {};
+            games.forEach((game, index) => {
+                gamesObj['game' + index] = game;
+            });
+            db.ref('games').set(gamesObj);
+            updateGameCount();
+        }
+
+        function updateGameCount() {
+            const count = games.length;
+            document.getElementById('gameCount').textContent = 
+                count === 0 ? 'No games yet' : 
+                count === 1 ? '1 game in collection' : 
+                `${count} games in collection`;
+        }
+
+        // ========== RENDER GAMES ==========
+        function renderGames(gamesToRender = null) {
+    const container = document.getElementById('gamesContainer');
+    let displayGames = gamesToRender || [...games];
+    
+    // Sort: pinned first, then by order
+    displayGames.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return (a.order || 999) - (b.order || 999);
+    });
+    
+    if (displayGames.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🎮</div>
+                <h3>${gamesToRender ? 'No games found' : 'No games yet'}</h3>
+                <p>${!gamesToRender && isAdmin ? 'Add your first game above!' : gamesToRender ? 'Try different search terms' : 'Login as admin to add games!'}</p>
+            </div>
+        `;
+        hideLoading();
+        return;
+    }
+
+    const lastVisit = parseInt(localStorage.getItem('lastVisit') || '0');
+    let imagesToLoad = 0;
+    let imagesLoaded = 0;
+
+    container.innerHTML = displayGames.map(function(game, index) {
+        const realIndex = games.indexOf(game);
+        const isNew = game.addedAt && game.addedAt > lastVisit && !game.editedAt;
+        const inCart = cart.find(item => item.name === game.name);
+        const isMissing = game.status === 'missing';
+        
+        if (game.image) imagesToLoad++;
+        
+        return `
+            <div class="game-card ${isMissing ? 'missing' : ''}" data-index="${realIndex}" draggable="${isAdmin ? 'true' : 'false'}" style="animation: slideDown 0.5s ease ${index * 0.1}s both;">
+                <div class="game-image">
+                    <img src="${game.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎴</text></svg>'}" alt="${escapeHtml(game.name)}" onload="imageLoaded()" onerror="imageLoaded()">
+                </div>
+                <div class="game-content">
+                    <div class="game-badges">
+                        ${isNew ? '<span class="game-badge badge-new">🔥 New</span>' : ''}
+                        ${game.pinned ? '<span class="game-badge badge-pinned">📌 Pinned</span>' : ''}
+                        ${isMissing ? '<span class="game-badge badge-missing">❌ Missing</span>' : '<span class="game-badge badge-available">✅ Available</span>'}
+                    </div>
+                    <h3 class="game-title">${escapeHtml(game.name)}</h3>
+                    <p class="game-description">${escapeHtml(game.description)}</p>
+                    ${isAdmin ? `
+                        <div class="admin-badges">
+                            <span class="badge badge-edit" data-action="edit" data-index="${realIndex}">Edit</span>
+                            <span class="badge badge-delete" data-action="delete" data-index="${realIndex}">Delete</span>
+                        </div>
+                    ` : ''}
+                </div>
+                ${!isAdmin && !isMissing ? `
+                    <button class="add-to-cart-btn ${inCart ? 'added' : ''}" onclick="addToCart(${realIndex}, event)" title="${inCart ? 'In cart' : 'Add to cart'}">
+                        ${inCart ? '✓' : '+'}
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    // If no images, hide loading immediately
+    if (imagesToLoad === 0) {
+        hideLoading();
+    }
+
+    document.querySelectorAll('.game-card').forEach(function(card) {
+        card.addEventListener('click', function(e) {
+            if (e.target.classList.contains('badge')) {
+                e.stopPropagation();
+                const action = e.target.getAttribute('data-action');
+                const index = parseInt(e.target.getAttribute('data-index'));
+                if (action === 'edit') editGame(index);
+                if (action === 'delete') deleteGame(index);
+                return;
+            }
+            if (e.target.classList.contains('add-to-cart-btn')) return;
+            const index = parseInt(this.getAttribute('data-index'));
+            showGameDetail(index);
+        });
+    });
+
+    if (isAdmin) setupDragAndDrop();
+}
+function imageLoaded() {
+    window.imagesLoaded = (window.imagesLoaded || 0) + 1;
+    window.imagesToLoad = window.imagesToLoad || 0;
+    
+    if (window.imagesLoaded >= window.imagesToLoad) {
+        hideLoading();
+    }
+}
+            function editGame(index) {
+            const game = games[index];
+            document.getElementById('gameOrder').value = game.order || (index + 1);
+            document.getElementById('gamePinned').checked = game.pinned || false;
+            document.getElementById('gameName').value = game.name;
+            document.getElementById('gameDescription').value = game.description;
+            document.getElementById('gameStatus').value = game.status || 'available';
+            
+            if (game.image) {
+                currentImage = game.image;
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = '<img src="' + currentImage + '" alt="Preview">';
+                preview.classList.add('has-image');
+            }
+            
+            editingId = index;
+            document.querySelector('.admin-panel h3').textContent = '✏️ Edit Game';
+            document.getElementById('adminPanel').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function deleteGame(index) {
+            if (confirm('Delete this game?')) {
+                games.splice(index, 1);
+                saveGames();
+                renderGames();
+                showToast('Game deleted', 'success');
+            }
+        }
+
+        function showGameDetail(index) {
+            const game = games[index];
+            document.getElementById('detailImage').src = game.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎴</text></svg>';
+            document.getElementById('detailTitle').textContent = game.name;
+            document.getElementById('detailDescription').textContent = game.description;
+            document.getElementById('detailModal').classList.add('active');
+        }
+
+        function hideDetailModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+let dragSrcIndex = null;
+
+function setupDragAndDrop() {
+    const cards = document.querySelectorAll('.game-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragover', handleDragOver);
+        card.addEventListener('drop', handleDrop);
+        card.addEventListener('dragend', handleDragEnd);
+        card.addEventListener('dragenter', handleDragEnter);
+        card.addEventListener('dragleave', handleDragLeave);
+    });
+}
+
+function handleDragStart(e) {
+    dragSrcIndex = parseInt(this.getAttribute('data-index'));
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragSrcIndex);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const dropTargetIndex = parseInt(this.getAttribute('data-index'));
+    
+    if (dragSrcIndex === dropTargetIndex) return;
+    
+    // SWAP positions — both games move
+    const temp = games[dragSrcIndex];
+    games[dragSrcIndex] = games[dropTargetIndex];
+    games[dropTargetIndex] = temp;
+    
+    saveGames();
+    renderGames();
+    
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.game-card').forEach(card => {
+        card.classList.remove('drag-over');
+    });
+}
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
